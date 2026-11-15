@@ -1,0 +1,9 @@
+leave-one-out accuracy 0.750 (always guessing: 0.656)
+
+|--- best_feature_corr <= 0.26
+|   |--- class: 1
+|--- best_feature_corr >  0.26
+|   |--- best_feature_corr <= 0.39
+|   |   |--- class: 0
+|   |--- best_feature_corr >  0.39
+|   |   |--- class: 0

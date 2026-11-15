@@ -24,3 +24,6 @@ data/*
 # Experiment results (scripts/run_experiment.py)
 results/*
 !results/.gitkeep
+!results/*.png
+!results/summary.csv
+!results/task2_*

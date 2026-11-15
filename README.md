@@ -1,98 +1,170 @@
-# iML 26/27 – Exercise 1: Quantifying Interpretability
+# iML 26/27 – Exercise 1: Simulation Load
 
-Template repository for the bonus task. **Fork this repository**, replace the example with your own
-work, and add the PDF of your presentation. **You are expected to rewrite this README as well**: by
-the deadline it should describe your approach, how to reproduce your results, and contain your own
-[AI statement](#ai-statement).
+**Team Hallucinators:** Kevin Antony, Arsha Fahima Tajdeen, Diya Panikkassery Sudheer Kumar
 
-> **Deadline: Sunday, November 15th, 2026, 23:59.** Your code and presentation must be submitted by then.
+**Slides:** [`presentation/presentation.pdf`](presentation/presentation.pdf).
+For the animated version, open [`presentation/slides.html`](presentation/slides.html) in a browser.
+Use the arrow keys to move, and press `N` to see the speaker notes.
+A LaTeX (Beamer) version of the same slides is in [`presentation/latex/`](presentation/latex/slides.tex)
+(PDF: [`presentation/latex/slides.pdf`](presentation/latex/slides.pdf)).
 
-## Tasks
+## The question
 
-### Task 1 (1  point): An interpretability metric
+Decision trees are called "interpretable": a person can follow how they make a decision.
+But a tree with 300 leaves, or a forest of 100 trees, is not really easy to follow.
+**So when does a tree model stop being interpretable?** To answer that, we need a way to measure it.
 
-Develop a metric that quantifies model interpretability. It has to work within one model class,
-e.g. for decision trees, random forests and gradient-boosted trees. Then evaluate a few
-inherently interpretable models and/or datasets and investigate the *threshold of
-interpretability*: at what point does a model stop being interpretable?
+## Our idea: count the steps
 
-- A trivial idea would be the *number of features used*. Your metric should go beyond that.
-- We will check that you did not simply copy someone else's interpretability metric.
-- You may use an LLM-based metric. In that case you have to provide evidence that its scores
-  agree with human judgments.
+Imagine you have to work out the model's answer **by hand**, for one input. How many steps does that take?
 
-### Task 2 (2 bonus points): Meta-features and interpretability
+Example: a Titanic passenger who is male, 30 years old, in 3rd class.
 
-Find connections between a dataset's meta-features (e.g. number of samples, number of features,
-class balance, …) and the interpretability, measured with your metric from Task 1, of several
-inherently interpretable models. This repository has no code for Task 2. Structure it as you see fit.
+| The tree asks | Cost | Why |
+| --- | --- | --- |
+| Is the passenger male? | 1 step | new feature: look up the value, then compare |
+| Is age below 9.5? | 1 step | new feature: look up the value, then compare |
+| Is age below 40? | ½ step | we already know the age, so we only compare |
+| → answer: "dies" | **2.5 steps** | |
 
-### Presentation
+That is our metric. We call it the **simulation load**:
 
-Prepare a **5-minute presentation** of your metric and results across models and datasets (and, if
-applicable, your Task 2 findings). Commit it as [`presentation/presentation.pdf`](presentation/).
-
-## Setup
-
-The repository is an installable Python package. We recommend [uv](https://docs.astral.sh/uv/):
-
-```bash
-uv sync --extra dev
-uv run pytest
-uv run python scripts/run_experiment.py
+```
+load for one input = (steps to walk through every tree) + (1 step per extra tree, to combine their answers)
 ```
 
-With plain pip:
+- A **new** feature on the path costs **1 step**.
+- A feature we **already looked at** on the same path costs **½ step**.
+- A **forest** or **boosting** model has many trees. You walk through each one, then you still have to
+  count the votes or add up the scores. That costs **1 extra step per extra tree**.
+
+We do this for every input in the dataset and take the **average**. Lower means easier to follow.
+
+**When is a model interpretable?** When the load is **7 or less**. People can hold about 7 things in their
+head at once (Miller, 1956: "7 ± 2"). More steps than that, and you lose track.
+
+### Why not just count leaves or features?
+
+- **We only count the path an input actually takes.** A deep branch that almost no input reaches hardly matters.
+- **Re-checking a feature is cheaper** than looking up a new one.
+- **Ensembles pay for combining** their trees.
+
+Example (Titanic): one fully grown tree has 231 leaves. A forest of 30 small trees has 236 leaves.
+Same size by leaf count. But tracing one passenger takes **7.4 steps** in the tree and **117 steps** in the forest.
+
+## Task 1: what we found
+
+**Setup.** 6 datasets (banknote, breast cancer, titanic, diabetes, credit-g, phoneme).
+65 models: single trees of every depth, plus random forests and boosting with 1 to 100 trees.
+Each model was trained 3 times on different random 75% / 25% train/test splits, and we report the average.
+
+![accuracy vs. load](results/frontier.png)
+
+*Each dot is one model. Left = fewer steps, up = more accurate. The shaded area is "interpretable" (load ≤ 7).*
+
+**How much accuracy do we lose by staying interpretable?**
+
+| Dataset | Best model overall | Best interpretable model | Accuracy we lose |
+| --- | --- | --- | --- |
+| diabetes | 76.4% (732 steps) | 76.0% (boosting, 2 trees) | 0.4 points |
+| titanic | 80.6% (360 steps) | 79.8% (tree, depth 3) | 0.8 points |
+| breast cancer | 96.3% (387 steps) | 94.9% (1 tree, depth 5) | 1.4 points |
+| banknote | 99.5% (294 steps) | 97.7% (tree, depth 6) | 1.8 points |
+| phoneme | 90.7% (808 steps) | 86.3% (tree, depth 10) | 4.5 points |
+| credit-g | 76.5% (1034 steps) | 71.1% (tree, depth 5) | 5.5 points |
+
+**Main results**
+
+- **A single tree stays at about 7 steps or less**, even when it grows very deep. Each input only walks one path.
+- **Forests and boosting stop being interpretable after 2–3 small trees.** Every extra tree adds a whole path plus a combining step.
+- **On 4 of 6 datasets, staying interpretable costs less than 2 accuracy points.** Only phoneme and credit-g cost more (4.5 to 5.5 points).
+
+**Limits**
+
+- We did not test this with real people. The numbers 1, ½ and 7 are our assumptions.
+- The metric is about following **one** prediction, not understanding the **whole** model.
+  For example, a tree with 110 leaves on phoneme still counts as interpretable (6.7 steps).
+- It does not check whether the features themselves make sense to a person.
+
+**Small technical note.** Boosting with only 1–5 trees and the usual settings (learning rate 0.1) just
+predicts the most common class. So for small boosting models we take bigger steps: learning rate = 1 / number of trees.
+
+## Task 2: which datasets are expensive to keep interpretable?
+
+**Setup.** We trained the same 65 models on **32 datasets** from OpenML (big datasets were cut to 5000 rows).
+For each dataset we measured two kinds of things.
+
+**1. Facts about the dataset ("meta-features"), measured before training our models:**
+
+- **Size:** number of rows, number of features, number of classes.
+- **Shape of the data:** how balanced the classes are, how many features are categories (like "red/blue"),
+  and how strongly the best single feature is linked to the answer.
+- **How well very simple models do:** always guessing the most common class, a tree with one split,
+  a straight-line model (logistic regression), and "copy the closest example" (1-nearest-neighbour).
+
+**2. How interpretable the dataset turned out:**
+
+- **Price:** best accuracy of any model minus best accuracy of an interpretable model (load ≤ 7).
+- **Load needed:** the fewest steps a model needs to get within 1 point of the best accuracy.
+- **Interpretable enough:** yes if that load is 7 or less. This was true for 11 of the 32 datasets.
+
+![meta-feature correlations](results/task2_heatmap.png)
+
+*Red = goes up together, blue = one goes up while the other goes down. A star means the link is unlikely to be chance.*
+
+**What we found** (correlation with the price; −1 to +1, 0 means no link):
+
+| When the dataset has… | the price… | Correlation | Why, in plain words |
+| --- | --- | --- | --- |
+| more classes | goes **up** | +0.45 | 7 steps only reach a few leaves, too few to tell many classes apart |
+| one class that is very common | goes **down** | −0.40 | a tiny tree is as good as anything, but it also barely beats guessing |
+| a lot that one split can already learn | goes **up** | +0.40 | there is more to learn, so bigger models gain more |
+| a lot that "copy the closest example" can learn | goes **up** | +0.38 | the pattern is local and messy, and a tree needs many splits for that |
+| more rows or more features | barely changes | ≈ 0 / +0.23 | size alone does not decide it (but bigger data does grow deeper trees) |
+
+**Can we predict it before training?** We trained a very small tree (2 questions deep) on the 32 datasets.
+It guesses "interpretable enough: yes or no" correctly **75%** of the time. Always guessing "no" would be right 66% of the time.
+Its rule only looks at how strongly the best single feature is linked to the answer:
+
+- **Very weak link (≤ 0.26):** a simple tree is enough on 4 of 4 datasets. There is little to learn anyway.
+- **Medium link (0.26 to 0.39):** a complex model was needed on all 12 datasets.
+- **Strong link (above 0.39):** mixed. A simple tree was enough on 7 of 16.
+
+**Be careful:** 32 datasets is not many, and we tested 44 links. A couple of them could look real just by chance.
+See these results as hints, not proof.
+
+## How to run it yourself
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+uv sync --extra dev                         # install everything
+uv run pytest                               # run the tests
+uv run python scripts/run_experiment.py     # Task 1: train all models (about 1 minute, downloads data once)
+uv run python scripts/make_figures.py       # Task 1: make the figures and the summary table
+uv run python scripts/run_task2.py          # Task 2: 32 datasets x 65 models (about 5 minutes)
+uv run python scripts/analyse_task2.py      # Task 2: correlations, figure and the small prediction tree
+uv run python scripts/build_slides.py       # build the slides and the PDF (the PDF needs Google Chrome)
+uv run python scripts/make_latex_figures.py # plots for the LaTeX slides; then: cd presentation/latex && tectonic slides.tex
 ```
 
-The first run downloads the Titanic dataset from OpenML and caches it in `data/` (relative to the
-directory you run from). You may use that dataset, but dont you want to rather look at something existing?
-
-## Repository structure
+## What is where
 
 ```
 iml_interpretability/
-├── data.py        # Dataset container + load_titanic(); add your own datasets here
-├── models.py      # get_models(): the models you compare (example: one decision tree)
-├── metric.py      # InterpretabilityMetric base class + RelativeNumberOfLeaves (example)
-└── evaluate.py    # evaluate(): fits all models on all datasets and computes all metrics
-scripts/
-└── run_experiment.py   # runs evaluate() and writes results/scores.csv
-tests/                  # pytest tests
-presentation/           # put presentation.pdf here
+├── data.py          # loads the datasets and turns them into numbers
+├── models.py        # the 65 models: single trees, forests, boosting
+├── metric.py        # our metric (simulation load) and two simple ones to compare with
+├── evaluate.py      # trains every model on every dataset and measures accuracy and load
+└── metafeatures.py  # Task 2: facts about each dataset, and how interpretable it turned out
+scripts/             # the scripts listed above
+tests/               # checks that the metric gives the right number on small, hand-made examples
+presentation/        # the slides (HTML and PDF)
+results/             # figures and tables
 ```
-
-The repository runs end to end on a minimal example: a single scikit-learn decision tree on
-Titanic, scored by its number of leaves relative to the maximum possible for its depth (`RelativeNumberOfLeaves` in
-[`iml_interpretability/metric.py`](iml_interpretability/metric.py)). Replace this example with your
-own metric, models and datasets. You are free to restructure everything, as long as the package
-stays installable and your results stay reproducible from the scripts in this repository.
-
-## Code style
-
-Please keep your code clean and consistent. We recommend [ruff](https://docs.astral.sh/ruff/) as
-linter and formatter. A configuration is already included in `pyproject.toml`:
-
-## Submission
-
-- Submit your code and presentation by **Sunday, November 15th, 2026, 23:59**.
-- Your fork contains your code, the scripts that reproduce your results, and
-  `presentation/presentation.pdf`.
-- **Rewrite this README.** Replace the template text with a short description of your approach and
-  how to reproduce your results.
-- **Mandatory:** replace the [AI statement](#ai-statement) below with your own, stating how you
-  used AI tools (or that you did not use any).
 
 ## AI statement
 
-> **Mandatory.** Replace this example with your own: which AI tools you used, for what, and how you
-> checked their output (or that you used none).
+Claude Code (Claude Opus 5.5) was used for coding, experiments, and documentation purposes (such as drafting this README).
 
-*Example:* I created this repository with Claude Code (Claude Opus 5.5). After clarifying the scope
-with it, it generated the code, tests and README based on my own projects as style references. I
-reviewed and edited the result and checked that it runs. I take full responsibility for and
-ownership of the content of this repository.
+The presentation slides were made explicitly by us in LaTeX Beamer under `presentation/latex/`, using the Madrid theme, matplotlib plots, and TikZ trees.
+
+We reviewed the code and the results, ran everything again, and take responsibility for everything in this repository.

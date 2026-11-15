@@ -1,0 +1,533 @@
+<meta charset="utf-8">
+<title>Simulation Load Talk</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: 1600x900 stage. Beamer (Madrid-like) frame: blue title bar, three-part footline, blocks, triangle bullets. One idea and one animated figure per slide. */
+:root{
+  --bg:#ffffff; --paper:#ffffff; --ink:#1a1a1a; --mute:#555566; --line:#d6d6e6;
+  --blue:#3333b2; --blue-d:#26268a; --blue-t:#e6e6f6; --orange:#c62828; --orange-t:#f8e1e0; --grey:#8f8fa8;
+  --green:#2e8b57;
+  --sans:'Source Sans 3',system-ui,-apple-system,sans-serif; --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);overflow:hidden}
+#stage{position:absolute;left:50%;top:50%;width:1600px;height:900px;transform-origin:center center;user-select:none}
+.slide{position:absolute;inset:0;opacity:0;visibility:hidden;transition:opacity .35s ease,visibility 0s linear .35s}
+.slide.on{opacity:1;visibility:visible;transition:opacity .35s ease}
+.a{position:absolute}
+.cap{font-size:26px;color:var(--mute)}
+.mono{font-family:var(--mono)}
+.card{background:var(--paper);border:2px solid var(--line);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font-size:28px;font-weight:500}
+.blue{color:var(--blue)} .orange{color:var(--orange)} .green{color:var(--green)} .muted{color:var(--mute)}
+.bar{position:absolute;height:64px;border-radius:6px;overflow:hidden}
+.bar .v{position:absolute;right:16px;top:0;line-height:64px;font-family:var(--mono);font-size:30px;font-weight:600;color:#fff}
+.chip{position:absolute;font-size:24px;font-weight:600;padding:6px 16px;border-radius:999px;border:2px solid currentColor;white-space:nowrap}
+.dot{position:absolute;border-radius:50%}
+.node{position:absolute;width:220px;height:64px;margin-left:-110px;margin-top:-32px;border-radius:10px;border:2px solid var(--line);background:var(--paper);
+  display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:600;box-sizing:border-box}
+.node.leaf{border-style:dashed;font-weight:500;color:var(--mute)}
+/* UI chrome */
+#prog{position:fixed;left:0;bottom:0;height:3px;background:var(--blue);transition:width .3s;z-index:5}
+#ui{position:fixed;right:16px;bottom:14px;display:flex;gap:8px;align-items:center;z-index:6;font-family:var(--mono);font-size:13px;color:var(--mute);opacity:.4}
+#ui:hover{opacity:1}
+#ui button{font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
+#notes{position:fixed;left:0;right:0;bottom:0;max-height:38vh;overflow:auto;background:var(--paper);border-top:1px solid var(--line);
+  padding:18px 24px 56px;font-size:18px;line-height:1.55;z-index:4;box-shadow:0 -8px 30px rgba(0,0,0,.08)}
+#notes .meta{font-family:var(--mono);font-size:13px;color:var(--mute);margin-bottom:8px}
+#notes p{max-width:75ch;margin:0 0 10px}
+#notes .click{font-family:var(--mono);font-size:13px;color:var(--blue);border:1px solid var(--blue);border-radius:5px;padding:1px 6px;margin-right:4px}
+#hint{position:fixed;left:16px;bottom:18px;font-family:var(--mono);font-size:13px;color:var(--mute);z-index:6}
+body.print #ui,body.print #hint,body.print #prog,body.print #notes{display:none!important}
+body.print .slide,body.print .slide.on{transition:none}
+.th-t{white-space:nowrap}
+.e2 .blk{display:flex;flex-direction:column} .e2 .blk .bb{flex:1}
+@media (prefers-reduced-motion: reduce){.slide,.slide.on{transition:none}}
+/* Beamer chrome */
+.h{position:absolute;left:0;top:0;width:1600px;height:104px;box-sizing:border-box;padding:0 64px;font-size:46px;line-height:104px;font-weight:600;color:#fff;
+  background:linear-gradient(180deg,#4646c4 0%,#3333b2 55%,#2b2b99 100%);box-shadow:0 4px 8px rgba(51,51,178,.3);z-index:2}
+#hdr-sec{position:absolute;right:64px;top:0;height:104px;line-height:104px;font-size:24px;color:rgba(255,255,255,.72);z-index:3}
+.sbody{position:absolute;left:0;top:0;width:1600px;height:900px;transform-origin:0 0;transform:translate(96px,70px) scale(.88)}
+#foot{position:absolute;left:0;bottom:0;width:1600px;height:50px;display:flex;font-size:22px;color:#fff;z-index:3}
+#foot div{display:flex;align-items:center;padding:0 40px;box-sizing:border-box}
+#foot .f1{width:420px;background:#262686} #foot .f2{width:840px;background:#2b2b97;justify-content:center} #foot .f3{width:340px;background:#3333b2;justify-content:flex-end}
+#stage.plain #foot,#stage.plain #hdr-sec{display:none}
+.blk{border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.blk .bh{background:var(--blue);color:#fff;font-size:26px;font-weight:600;padding:8px 22px}
+.blk .bb{background:var(--blue-t);color:var(--ink);padding:18px 22px}
+.blk.al .bh{background:var(--orange)} .blk.al .bb{background:var(--orange-t)}
+.tri{display:inline-block;width:0;height:0;border-left:18px solid var(--blue);border-top:11px solid transparent;border-bottom:11px solid transparent;flex:none}
+.li{display:flex;align-items:center;gap:26px}
+</style>
+
+<div id="stage">
+<div id="hdr-sec"></div><div id="foot"><div class="f1">Team Hallucinators</div><div class="f2">Simulation Load</div><div class="f3"><span id="fpg"></span></div></div>
+
+<!-- 1 Title -->
+<section class="slide" id="s-title">
+  <div class="a t-in" style="left:200px;top:150px;width:1200px;padding:52px 40px 44px;text-align:center;box-sizing:border-box;border-radius:14px;background:linear-gradient(180deg,#e8e8f8 0%,#ffffff 100%);border:2px solid var(--blue);box-shadow:0 4px 14px rgba(51,51,178,.18)">
+    <div style="font-size:96px;font-weight:700;color:var(--blue);line-height:1.05">Simulation Load</div>
+    <div style="font-size:40px;color:var(--ink);margin-top:22px">How many steps to trace one prediction?</div></div>
+  <div class="a t-in" style="left:200px;top:470px;width:1200px;text-align:center;font-size:30px;font-weight:600;color:var(--blue);letter-spacing:1px">TEAM HALLUCINATORS</div>
+  <div class="a t-in" style="left:700px;top:525px;width:200px;height:6px;background:var(--blue);border-radius:3px"></div>
+  <div class="a t-in" style="left:100px;top:565px;width:1400px;text-align:center;font-size:38px;font-weight:700;line-height:1.45">Kevin Antony · Arsha Fahima Tajdeen<br>Diya Panikkassery Sudheer Kumar</div>
+  <div class="a t-in cap" style="left:200px;top:700px;width:1200px;text-align:center;font-size:28px">Interpretable Machine Learning WS 26/27 · Exercise 1</div>
+</section>
+
+<!-- 2 Grow -->
+<section class="slide" id="s-grow">
+  <div class="h">When does a tree model stop being interpretable?</div>
+  <svg class="a g-svg" width="1600" height="900" style="left:0;top:0;overflow:visible" aria-hidden="true"></svg>
+  <div class="a g-cols" style="left:0;top:0"></div>
+  <div class="a g-lab cap" style="left:0;top:700px;width:1600px;text-align:center;font-size:30px">↑ steps to trace one input</div>
+</section>
+
+<!-- 3 Trace -->
+<section class="slide" id="s-trace">
+  <div class="h">Our idea: count the steps</div>
+  <div class="a tr-p chip" style="left:60px;top:160px;font-size:28px;color:var(--ink);border-color:var(--line)">Input: male · 30 years · 3rd class</div>
+  <svg class="a tr-svg" width="1600" height="900" style="left:0;top:0;overflow:visible" aria-hidden="true"></svg>
+  <div class="a tr-nodes" style="left:0;top:0"></div>
+  <div class="a tr-s1 mono" style="left:1240px;top:290px;font-size:34px">+1 &nbsp;sex</div>
+  <div class="a tr-s2 mono" style="left:1240px;top:360px;font-size:34px">+1 &nbsp;age</div>
+  <div class="a tr-s3 mono" style="left:1240px;top:430px;font-size:34px;color:var(--orange)">+½ age <span class="muted" style="font-size:26px">again</span></div>
+  <div class="a tr-sum" style="left:1240px;top:505px;width:260px;border-top:3px solid var(--ink);padding-top:10px">
+    <span class="mono tr-n" style="font-size:90px;font-weight:600;color:var(--blue)">0</span><span style="font-size:32px;font-weight:600"> steps</span></div>
+</section>
+
+<!-- 4 Metric -->
+<section class="slide" id="s-metric">
+  <div class="h">The metric</div>
+  <div class="a m-f" style="left:0;top:210px;width:1600px;text-align:center;font-size:52px;font-weight:600">
+    load = Σ<sub style="font-size:28px">trees</sub> ( <span class="blue">new features</span> + <span class="orange">½ · repeats</span> ) + <span class="green">(trees − 1)</span></div>
+  <div class="a m-l blue" style="left:500px;top:310px;width:260px;text-align:center;font-size:26px">↑<br>look up + compare</div>
+  <div class="a m-l orange" style="left:770px;top:310px;width:240px;text-align:center;font-size:26px">↑<br>compare only</div>
+  <div class="a m-l green" style="left:1060px;top:310px;width:260px;text-align:center;font-size:26px">↑<br>combine the trees</div>
+  <div class="a m-avg cap" style="left:0;top:440px;width:1600px;text-align:center;font-size:32px">averaged over all inputs in the data</div>
+  <div class="a m-t blk al" style="left:350px;top:560px;width:900px"><div class="bh">Threshold</div>
+    <div class="bb" style="text-align:center;padding:22px"><span style="font-size:60px;font-weight:700">load ≤ 7</span><span class="cap" style="font-size:28px">&nbsp;&nbsp;working memory: 7 ± 2 items</span></div></div>
+</section>
+
+<!-- 5 Leaves -->
+<section class="slide" id="s-leaves">
+  <div class="h">Same size, very different effort</div>
+  <div class="a lv-h cap" style="left:480px;top:170px;font-size:30px;font-weight:600">leaves</div>
+  <div class="a lv-h" style="left:1000px;top:170px;font-size:30px;font-weight:600;color:var(--blue)">steps (load)</div>
+  <div class="a lv-l" style="left:100px;top:262px;width:340px;font-size:32px;font-weight:600;line-height:1.1">1 deep tree</div>
+  <div class="a lv-l" style="left:100px;top:402px;width:340px;font-size:32px;font-weight:600;line-height:1.1">30 small trees</div>
+  <div class="a lv-rows" style="left:0;top:0"></div>
+  <div class="a cap lv-f" style="left:100px;top:560px;font-size:26px">Titanic dataset</div>
+</section>
+
+<!-- 6 Setup -->
+<section class="slide" id="s-setup">
+  <div class="h">Experiment</div>
+  <div class="a su card" style="left:100px;top:200px;width:420px;height:280px"><span class="mono" style="font-size:110px;font-weight:600;color:var(--blue)">6</span>datasets</div>
+  <div class="a su card" style="left:590px;top:200px;width:420px;height:280px"><span class="mono" style="font-size:110px;font-weight:600;color:var(--blue)">65</span>models</div>
+  <div class="a su card" style="left:1080px;top:200px;width:420px;height:280px"><span class="mono" style="font-size:110px;font-weight:600;color:var(--blue)">3</span>train/test splits</div>
+  <div class="a su cap" style="left:100px;top:510px;width:420px;text-align:center;font-size:26px;line-height:1.4">banknote · breast cancer · titanic<br>diabetes · credit-g · phoneme</div>
+  <div class="a su" style="left:590px;top:510px;width:420px;text-align:center;font-size:26px;line-height:1.4;font-weight:600">
+    <span class="blue">1 tree</span> · <span class="green">forest</span> · <span class="orange">boosting</span><div class="cap" style="font-size:26px;font-weight:400">1 – 100 trees</div></div>
+</section>
+
+<!-- 7 Scatter -->
+<section class="slide" id="s-scatter">
+  <div class="h">Accuracy vs. load</div>
+  <div class="a sc-leg" style="left:100px;top:140px;display:flex;gap:36px;font-size:26px;font-weight:600">
+    <span><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:var(--blue);margin-right:8px"></span>1 tree</span>
+    <span><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:var(--green);margin-right:8px"></span>forest</span>
+    <span><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:var(--orange);margin-right:8px"></span>boosting</span>
+    <span class="cap" style="font-size:26px;font-weight:600"><span style="display:inline-block;width:26px;height:16px;background:var(--blue-t);margin-right:8px"></span>interpretable (≤ 7)</span></div>
+  <div class="a sc-box" style="left:0;top:0"></div>
+</section>
+
+<!-- 8 Price -->
+<section class="slide" id="s-price">
+  <div class="h">Price of staying interpretable</div>
+  <div class="a cap" style="left:420px;top:160px;font-size:28px">accuracy lost with load ≤ 7 (percentage points)</div>
+  <div class="a pr-rows" style="left:0;top:0"></div>
+</section>
+
+<!-- 9 Threshold -->
+<section class="slide" id="s-thresh">
+  <div class="h">Ensembles lose it after 2–3 trees</div>
+  <div class="a th-leg" style="left:100px;top:150px;display:flex;gap:40px;font-size:28px;font-weight:600">
+    <span><span style="display:inline-block;width:24px;height:24px;border-radius:50%;background:var(--ink);vertical-align:-3px;margin-right:10px"></span>load ≤ 7</span>
+    <span><span style="display:inline-block;width:24px;height:24px;border-radius:50%;border:3px solid var(--ink);box-sizing:border-box;vertical-align:-3px;margin-right:10px"></span>load &gt; 7</span>
+    <span class="cap" style="font-size:24px;font-weight:400;align-self:center">median over 6 datasets</span></div>
+  <div class="a th-box" style="left:0;top:0"></div>
+</section>
+
+<!-- T2a correlations -->
+<section class="slide" id="s-t2corr">
+  <div class="h">Task 2: what makes a dataset expensive?</div>
+  <div class="a cap" style="left:100px;top:140px;font-size:28px">32 OpenML datasets · correlation with <b style="color:var(--ink)">accuracy lost at load ≤ 7</b></div>
+  <div class="a c2-box" style="left:0;top:0"></div>
+</section>
+
+<!-- T2b scatter -->
+<section class="slide" id="s-t2scatter">
+  <div class="h">More classes cost more, imbalance is cheap</div>
+  <div class="a s2-box" style="left:0;top:0"></div>
+</section>
+
+<!-- T2c meta tree -->
+<section class="slide" id="s-t2tree">
+  <div class="h">Can we tell before training?</div>
+  <svg class="a mt-svg" width="1600" height="900" style="left:0;top:0;overflow:visible" aria-hidden="true">
+    <line x1="800" y1="262" x2="400" y2="420" stroke="var(--mute)" stroke-width="3"/>
+    <line x1="800" y1="262" x2="1050" y2="420" stroke="var(--mute)" stroke-width="3"/>
+    <line x1="1050" y1="482" x2="830" y2="620" stroke="var(--mute)" stroke-width="3"/>
+    <line x1="1050" y1="482" x2="1290" y2="620" stroke="var(--mute)" stroke-width="3"/>
+  </svg>
+  <div class="a mt mt0 node" style="left:800px;top:230px;width:560px;margin-left:-280px">best single feature: |corr| ≤ 0.26 ?</div>
+  <div class="a mt mt1 cap" style="left:520px;top:300px;font-size:24px">yes</div>
+  <div class="a mt mt1 cap" style="left:950px;top:300px;font-size:24px">no</div>
+  <div class="a mt mt1 node" style="left:400px;top:450px;width:360px;margin-left:-180px;height:110px;margin-top:-55px;flex-direction:column;border-color:var(--blue);background:var(--blue-t)">simple tree enough<span class="mono blue" style="font-size:30px">4 / 4 datasets</span></div>
+  <div class="a mt mt1 node" style="left:1050px;top:450px;width:360px;margin-left:-180px">|corr| ≤ 0.39 ?</div>
+  <div class="a mt mt2 node" style="left:830px;top:650px;width:360px;margin-left:-180px;height:110px;margin-top:-55px;flex-direction:column;border-color:var(--orange);background:var(--orange-t)">complex model needed<span class="mono orange" style="font-size:30px">12 / 12 datasets</span></div>
+  <div class="a mt mt2 node" style="left:1290px;top:650px;width:300px;margin-left:-150px;height:110px;margin-top:-55px;flex-direction:column">mixed<span class="mono muted" style="font-size:30px">7 of 16 simple</span></div>
+  <div class="a mt mt3 blk" style="left:100px;top:600px;width:480px"><div class="bh">Leave-one-out accuracy</div>
+    <div class="bb" style="font-size:44px;font-weight:700">75% <span class="cap" style="font-size:26px;font-weight:400">vs. 66% guessing</span></div></div>
+</section>
+
+<!-- 10 Limits -->
+<section class="slide" id="s-limits">
+  <div class="h">Limits</div>
+  <div class="a lim li" style="left:140px;top:210px;font-size:46px"><span class="tri"></span>No user study: 1, ½ and 7 are assumptions</div>
+  <div class="a lim li" style="left:140px;top:390px;font-size:46px"><span class="tri"></span>One prediction, not the whole model</div>
+  <div class="a lim li" style="left:140px;top:530px;font-size:46px"><span class="tri"></span>Ignores what the features mean</div>
+  <div class="a lim li" style="left:140px;top:670px;font-size:46px"><span class="tri"></span>Task 2: 32 datasets, 44 tests → hints, not proof</div>
+</section>
+
+<!-- 11 AI -->
+<section class="slide" id="s-ai">
+  <div class="h">How we used AI</div>
+  <div class="a ai blk" style="left:100px;top:220px;width:1400px"><div class="bh">Claude Code (Claude Opus 5.5)</div><div class="bb" style="font-size:40px">Code, experiments</div></div>
+  <div class="a ai blk al" style="left:100px;top:440px;width:1400px"><div class="bh">Checked by us</div><div class="bb" style="font-size:40px">Read the code, re-ran everything, verified the numbers</div></div>
+</section>
+
+<!-- 12 Takeaway -->
+<section class="slide" id="s-end">
+  <div class="h">Takeaway</div>
+  <div class="a e1 blk" style="left:100px;top:200px;width:1400px"><div class="bh">Interpretable</div><div class="bb" style="font-size:60px;font-weight:700;padding:30px 32px;text-align:center">a prediction can be traced in ≤ 7 steps</div></div>
+  <div class="a e2" style="left:100px;top:500px;width:1400px;display:flex;gap:40px">
+    <div class="blk" style="flex:1"><div class="bh">1 tree</div><div class="bb" style="font-size:34px;font-weight:600;text-align:center">≤ 7 ✓</div></div>
+    <div class="blk al" style="flex:1"><div class="bh">Ensembles</div><div class="bb" style="font-size:34px;font-weight:600;text-align:center">&gt; 7 after 2–3 trees</div></div>
+    <div class="blk" style="flex:1"><div class="bh">Accuracy cost</div><div class="bb" style="font-size:34px;font-weight:600;text-align:center">0.4 – 5.5 pts</div></div>
+    <div class="blk" style="flex:1"><div class="bh">Costly datasets</div><div class="bb" style="font-size:34px;font-weight:600;text-align:center">many classes, balanced</div></div></div>
+</section>
+
+</div>
+
+<div id="prog"></div>
+<div id="hint">→ / click: next · ← back · N: notes · F: fullscreen</div>
+<aside id="notes" hidden><div class="meta"></div><div class="body"></div></aside>
+<div id="ui">
+  <button id="bPrev" type="button" aria-label="Previous">←</button>
+  <button id="bNext" type="button" aria-label="Next">→</button>
+  <button id="bNotes" type="button">Notes</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+const DATA={"points": [{"dataset": "phoneme", "family": "boosting", "accuracy": 0.7594, "simulation_load": 1.0}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.7066, "simulation_load": 19.0}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.7977, "simulation_load": 199.0}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.7288, "simulation_load": 3.0}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.7301, "simulation_load": 5.0}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.7792, "simulation_load": 59.0}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.7195, "simulation_load": 9.0}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.7723, "simulation_load": 1.6883}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.7552, "simulation_load": 27.2336}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.8426, "simulation_load": 284.2888}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.7644, "simulation_load": 4.6883}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.7577, "simulation_load": 7.6883}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.809, "simulation_load": 85.7058}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.7668, "simulation_load": 13.2675}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.7651, "simulation_load": 2.5005}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.79, "simulation_load": 35.2934}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.8566, "simulation_load": 358.7354}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.7942, "simulation_load": 6.3115}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.7945, "simulation_load": 10.0558}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.8379, "simulation_load": 110.0853}, {"dataset": "phoneme", "family": "boosting", "accuracy": 0.792, "simulation_load": 17.1971}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.7116, "simulation_load": 1.0}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.7446, "simulation_load": 19.0}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.7323, "simulation_load": 199.0}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.7575, "simulation_load": 3.0}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.7291, "simulation_load": 5.0}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.7355, "simulation_load": 59.0}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.7066, "simulation_load": 9.0}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.7747, "simulation_load": 2.0}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.7888, "simulation_load": 28.1345}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.7903, "simulation_load": 292.6639}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.7691, "simulation_load": 4.8943}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.7718, "simulation_load": 7.8943}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.794, "simulation_load": 87.2762}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.7797, "simulation_load": 13.7911}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.7777, "simulation_load": 2.8664}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.8011, "simulation_load": 36.6609}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.8083, "simulation_load": 379.8539}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.7804, "simulation_load": 6.6101}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.796, "simulation_load": 10.4565}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.8026, "simulation_load": 113.1669}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.8009, "simulation_load": 18.0949}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.7945, "simulation_load": 4.3423}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.8337, "simulation_load": 51.9954}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.8418, "simulation_load": 528.117}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.8117, "simulation_load": 9.6269}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.8246, "simulation_load": 15.1002}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.8386, "simulation_load": 157.7598}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.8302, "simulation_load": 25.829}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.8404, "simulation_load": 7.1362}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.8892, "simulation_load": 79.4131}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.9075, "simulation_load": 807.8782}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.8414, "simulation_load": 15.1827}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.8729, "simulation_load": 23.235}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.9006, "simulation_load": 242.17}, {"dataset": "phoneme", "family": "forest", "accuracy": 0.8803, "simulation_load": 39.328}, {"dataset": "phoneme", "family": "tree", "accuracy": 0.8628, "simulation_load": 6.7136}, {"dataset": "phoneme", "family": "tree", "accuracy": 0.7594, "simulation_load": 1.0}, {"dataset": "phoneme", "family": "tree", "accuracy": 0.7723, "simulation_load": 1.6883}, {"dataset": "phoneme", "family": "tree", "accuracy": 0.7703, "simulation_load": 2.5005}, {"dataset": "phoneme", "family": "tree", "accuracy": 0.7947, "simulation_load": 3.4186}, {"dataset": "phoneme", "family": "tree", "accuracy": 0.8147, "simulation_load": 4.2566}, {"dataset": "phoneme", "family": "tree", "accuracy": 0.8377, "simulation_load": 4.937}, {"dataset": "phoneme", "family": "tree", "accuracy": 0.8488, "simulation_load": 5.981}, {"dataset": "phoneme", "family": "tree", "accuracy": 0.8648, "simulation_load": 7.4625}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7734, "simulation_load": 1.0}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7734, "simulation_load": 19.0}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7886, "simulation_load": 199.0}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7632, "simulation_load": 3.0}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7734, "simulation_load": 5.0}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7734, "simulation_load": 59.0}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7734, "simulation_load": 9.0}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7561, "simulation_load": 2.0}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7713, "simulation_load": 29.0}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7917, "simulation_load": 287.2056}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7734, "simulation_load": 5.0}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7724, "simulation_load": 8.0}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7886, "simulation_load": 88.6364}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7713, "simulation_load": 14.0}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7978, "simulation_load": 3.0}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7876, "simulation_load": 38.9986}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.8059, "simulation_load": 360.4682}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7917, "simulation_load": 7.0}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7907, "simulation_load": 11.0}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.8008, "simulation_load": 114.6417}, {"dataset": "titanic", "family": "boosting", "accuracy": 0.7846, "simulation_load": 18.9986}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7114, "simulation_load": 1.0}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7287, "simulation_load": 19.0}, {"dataset": "titanic", "family": "forest", "accuracy": 0.75, "simulation_load": 199.0}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7134, "simulation_load": 3.0}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7317, "simulation_load": 5.0}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7276, "simulation_load": 59.0}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7327, "simulation_load": 9.0}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7256, "simulation_load": 1.9101}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7622, "simulation_load": 28.717}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7795, "simulation_load": 296.3323}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7348, "simulation_load": 4.9101}, {"dataset": "titanic", "family": "forest", "accuracy": 0.75, "simulation_load": 7.9101}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7724, "simulation_load": 88.2295}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7571, "simulation_load": 13.9101}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7673, "simulation_load": 2.8678}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7805, "simulation_load": 38.475}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7978, "simulation_load": 389.3357}, {"dataset": "titanic", "family": "forest", "accuracy": 0.747, "simulation_load": 6.8678}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7805, "simulation_load": 10.859}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7886, "simulation_load": 116.5493}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7835, "simulation_load": 18.7311}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7429, "simulation_load": 4.5749}, {"dataset": "titanic", "family": "forest", "accuracy": 0.8039, "simulation_load": 55.0437}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7957, "simulation_load": 557.7025}, {"dataset": "titanic", "family": "forest", "accuracy": 0.749, "simulation_load": 10.2854}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7835, "simulation_load": 15.9399}, {"dataset": "titanic", "family": "forest", "accuracy": 0.8059, "simulation_load": 167.6629}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7967, "simulation_load": 27.0029}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7551, "simulation_load": 7.9115}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7825, "simulation_load": 88.318}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7907, "simulation_load": 893.036}, {"dataset": "titanic", "family": "forest", "accuracy": 0.747, "simulation_load": 16.7061}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7622, "simulation_load": 25.8282}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7846, "simulation_load": 267.053}, {"dataset": "titanic", "family": "forest", "accuracy": 0.7744, "simulation_load": 43.8581}, {"dataset": "titanic", "family": "tree", "accuracy": 0.7713, "simulation_load": 6.4196}, {"dataset": "titanic", "family": "tree", "accuracy": 0.7734, "simulation_load": 1.0}, {"dataset": "titanic", "family": "tree", "accuracy": 0.7561, "simulation_load": 2.0}, {"dataset": "titanic", "family": "tree", "accuracy": 0.7978, "simulation_load": 3.0}, {"dataset": "titanic", "family": "tree", "accuracy": 0.7774, "simulation_load": 3.633}, {"dataset": "titanic", "family": "tree", "accuracy": 0.7856, "simulation_load": 4.2384}, {"dataset": "titanic", "family": "tree", "accuracy": 0.7876, "simulation_load": 4.8306}, {"dataset": "titanic", "family": "tree", "accuracy": 0.7754, "simulation_load": 5.7387}, {"dataset": "titanic", "family": "tree", "accuracy": 0.7571, "simulation_load": 7.3867}], "summary": [{"dataset": "banknote", "price_of_interpretability": 0.0185}, {"dataset": "breast_cancer", "price_of_interpretability": 0.014}, {"dataset": "titanic", "price_of_interpretability": 0.0081}, {"dataset": "diabetes", "price_of_interpretability": 0.0035}, {"dataset": "credit_g", "price_of_interpretability": 0.0547}, {"dataset": "phoneme", "price_of_interpretability": 0.0447}], "grid": [{"family": "boosting", "depth": "1", "n_trees": 1, "simulation_load": 1.0}, {"family": "boosting", "depth": "1", "n_trees": 2, "simulation_load": 3.0}, {"family": "boosting", "depth": "1", "n_trees": 3, "simulation_load": 5.0}, {"family": "boosting", "depth": "1", "n_trees": 5, "simulation_load": 9.0}, {"family": "boosting", "depth": "1", "n_trees": 10, "simulation_load": 19.0}, {"family": "boosting", "depth": "1", "n_trees": 30, "simulation_load": 59.0}, {"family": "boosting", "depth": "1", "n_trees": 100, "simulation_load": 199.0}, {"family": "boosting", "depth": "2", "n_trees": 1, "simulation_load": 2.0}, {"family": "boosting", "depth": "2", "n_trees": 2, "simulation_load": 5.0}, {"family": "boosting", "depth": "2", "n_trees": 3, "simulation_load": 7.96}, {"family": "boosting", "depth": "2", "n_trees": 5, "simulation_load": 13.87}, {"family": "boosting", "depth": "2", "n_trees": 10, "simulation_load": 28.8}, {"family": "boosting", "depth": "2", "n_trees": 30, "simulation_load": 88.6}, {"family": "boosting", "depth": "2", "n_trees": 100, "simulation_load": 290.6}, {"family": "boosting", "depth": "3", "n_trees": 1, "simulation_load": 2.8}, {"family": "boosting", "depth": "3", "n_trees": 2, "simulation_load": 6.78}, {"family": "boosting", "depth": "3", "n_trees": 3, "simulation_load": 10.6}, {"family": "boosting", "depth": "3", "n_trees": 5, "simulation_load": 18.42}, {"family": "boosting", "depth": "3", "n_trees": 10, "simulation_load": 37.73}, {"family": "boosting", "depth": "3", "n_trees": 30, "simulation_load": 114.88}, {"family": "boosting", "depth": "3", "n_trees": 100, "simulation_load": 371.22}, {"family": "forest", "depth": "1", "n_trees": 1, "simulation_load": 1.0}, {"family": "forest", "depth": "1", "n_trees": 2, "simulation_load": 3.0}, {"family": "forest", "depth": "1", "n_trees": 3, "simulation_load": 5.0}, {"family": "forest", "depth": "1", "n_trees": 5, "simulation_load": 9.0}, {"family": "forest", "depth": "1", "n_trees": 10, "simulation_load": 19.0}, {"family": "forest", "depth": "1", "n_trees": 30, "simulation_load": 59.0}, {"family": "forest", "depth": "1", "n_trees": 100, "simulation_load": 199.0}, {"family": "forest", "depth": "2", "n_trees": 1, "simulation_load": 2.0}, {"family": "forest", "depth": "2", "n_trees": 2, "simulation_load": 4.94}, {"family": "forest", "depth": "2", "n_trees": 3, "simulation_load": 7.94}, {"family": "forest", "depth": "2", "n_trees": 5, "simulation_load": 13.89}, {"family": "forest", "depth": "2", "n_trees": 10, "simulation_load": 28.75}, {"family": "forest", "depth": "2", "n_trees": 30, "simulation_load": 88.16}, {"family": "forest", "depth": "2", "n_trees": 100, "simulation_load": 295.72}, {"family": "forest", "depth": "3", "n_trees": 1, "simulation_load": 2.87}, {"family": "forest", "depth": "3", "n_trees": 2, "simulation_load": 6.74}, {"family": "forest", "depth": "3", "n_trees": 3, "simulation_load": 10.65}, {"family": "forest", "depth": "3", "n_trees": 5, "simulation_load": 18.41}, {"family": "forest", "depth": "3", "n_trees": 10, "simulation_load": 37.86}, {"family": "forest", "depth": "3", "n_trees": 30, "simulation_load": 115.22}, {"family": "forest", "depth": "3", "n_trees": 100, "simulation_load": 386.27}, {"family": "forest", "depth": "5", "n_trees": 1, "simulation_load": 4.34}, {"family": "forest", "depth": "5", "n_trees": 2, "simulation_load": 9.72}, {"family": "forest", "depth": "5", "n_trees": 3, "simulation_load": 15.2}, {"family": "forest", "depth": "5", "n_trees": 5, "simulation_load": 26.11}, {"family": "forest", "depth": "5", "n_trees": 10, "simulation_load": 52.85}, {"family": "forest", "depth": "5", "n_trees": 30, "simulation_load": 160.0}, {"family": "forest", "depth": "5", "n_trees": 100, "simulation_load": 535.9}, {"family": "forest", "depth": "max", "n_trees": 1, "simulation_load": 6.65}, {"family": "forest", "depth": "max", "n_trees": 2, "simulation_load": 14.32}, {"family": "forest", "depth": "max", "n_trees": 3, "simulation_load": 21.91}, {"family": "forest", "depth": "max", "n_trees": 5, "simulation_load": 37.32}, {"family": "forest", "depth": "max", "n_trees": 10, "simulation_load": 75.53}, {"family": "forest", "depth": "max", "n_trees": 30, "simulation_load": 230.78}, {"family": "forest", "depth": "max", "n_trees": 100, "simulation_load": 770.02}, {"family": "tree", "depth": "1", "n_trees": 1, "simulation_load": 1.0}, {"family": "tree", "depth": "10", "n_trees": 1, "simulation_load": 6.3}, {"family": "tree", "depth": "2", "n_trees": 1, "simulation_load": 2.0}, {"family": "tree", "depth": "3", "n_trees": 1, "simulation_load": 2.86}, {"family": "tree", "depth": "4", "n_trees": 1, "simulation_load": 3.6}, {"family": "tree", "depth": "5", "n_trees": 1, "simulation_load": 4.25}, {"family": "tree", "depth": "6", "n_trees": 1, "simulation_load": 4.88}, {"family": "tree", "depth": "8", "n_trees": 1, "simulation_load": 5.81}, {"family": "tree", "depth": "max", "n_trees": 1, "simulation_load": 6.82}]};
+const D2={"rho": {"log_n_samples": -0.018001488944409377, "log_n_features": 0.22736474252293343, "n_classes": 0.45251534662999127, "class_balance": 0.2302897111199135, "share_categorical": 0.08744042826724015, "pca_dims_95": 0.10701177627371389, "best_feature_corr": -0.06527319837475255, "acc_majority": -0.401540181013225, "stump_gain": 0.3953424555890739, "linear_gain": 0.2966902101777002, "knn_gain": 0.3795379793138701}, "p": {"log_n_samples": 0.9221005776805518, "log_n_features": 0.2107645371373242, "n_classes": 0.009310291281333538, "class_balance": 0.20479417560329355, "share_categorical": 0.6341660047538816, "pca_dims_95": 0.5599312259812244, "best_feature_corr": 0.7226425961896531, "acc_majority": 0.022732344473250135, "stump_gain": 0.025120795729661055, "linear_gain": 0.09916285570443846, "knn_gain": 0.03215598001980998}, "points": [{"dataset": "credit_g", "price": 0.062, "n_classes": 2, "acc_majority": 0.7}, {"dataset": "diabetes", "price": 0.0, "n_classes": 2, "acc_majority": 0.651}, {"dataset": "banknote", "price": 0.019, "n_classes": 2, "acc_majority": 0.5554}, {"dataset": "phoneme", "price": 0.0392, "n_classes": 2, "acc_majority": 0.7066}, {"dataset": "blood_transfusion", "price": 0.0107, "n_classes": 2, "acc_majority": 0.762}, {"dataset": "ilpd", "price": 0.0034, "n_classes": 2, "acc_majority": 0.7136}, {"dataset": "qsar_biodeg", "price": 0.0587, "n_classes": 2, "acc_majority": 0.6626}, {"dataset": "wdbc", "price": 0.014, "n_classes": 2, "acc_majority": 0.6274}, {"dataset": "kc2", "price": 0.0, "n_classes": 2, "acc_majority": 0.795}, {"dataset": "kc1", "price": 0.0066, "n_classes": 2, "acc_majority": 0.8454}, {"dataset": "pc1", "price": 0.0108, "n_classes": 2, "acc_majority": 0.9306}, {"dataset": "pc4", "price": 0.0178, "n_classes": 2, "acc_majority": 0.8779}, {"dataset": "climate_crashes", "price": 0.0222, "n_classes": 2, "acc_majority": 0.9148}, {"dataset": "steel_plates", "price": 0.0792, "n_classes": 7, "acc_majority": 0.3467}, {"dataset": "vehicle", "price": 0.0354, "n_classes": 4, "acc_majority": 0.2577}, {"dataset": "balance_scale", "price": 0.1338, "n_classes": 3, "acc_majority": 0.4608}, {"dataset": "breast_w", "price": 0.0086, "n_classes": 2, "acc_majority": 0.6552}, {"dataset": "cmc", "price": 0.0041, "n_classes": 3, "acc_majority": 0.427}, {"dataset": "credit_approval", "price": 0.0376, "n_classes": 2, "acc_majority": 0.5551}, {"dataset": "eucalyptus", "price": 0.0408, "n_classes": 5, "acc_majority": 0.2908}, {"dataset": "vowel", "price": 0.1431, "n_classes": 11, "acc_majority": 0.0909}, {"dataset": "spambase", "price": 0.0378, "n_classes": 2, "acc_majority": 0.606}, {"dataset": "tic_tac_toe", "price": 0.0521, "n_classes": 2, "acc_majority": 0.6534}, {"dataset": "kr_vs_kp", "price": 0.0, "n_classes": 2, "acc_majority": 0.5222}, {"dataset": "wilt", "price": 0.0045, "n_classes": 2, "acc_majority": 0.9461}, {"dataset": "churn", "price": 0.0168, "n_classes": 2, "acc_majority": 0.8586}, {"dataset": "phishing", "price": 0.0288, "n_classes": 2, "acc_majority": 0.557}, {"dataset": "adult", "price": 0.0188, "n_classes": 2, "acc_majority": 0.7608}, {"dataset": "bank_marketing", "price": 0.0088, "n_classes": 2, "acc_majority": 0.883}, {"dataset": "car", "price": 0.0278, "n_classes": 4, "acc_majority": 0.7002}, {"dataset": "ozone", "price": 0.0087, "n_classes": 2, "acc_majority": 0.9369}, {"dataset": "titanic", "price": 0.0015, "n_classes": 2, "acc_majority": 0.618}]};
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const TL=()=>gsap.timeline();
+const NS='http://www.w3.org/2000/svg';
+function counter(tl, el, from, to, opts={}){
+  const o={v:from}, dec=opts.dec||0, suf=opts.suf||'', pre=opts.pre||'';
+  const fmt=v=>pre+(v<0?'−':'')+Math.abs(v).toFixed(dec)+suf;
+  el.textContent=fmt(from);
+  tl.to(o,{v:to,duration:opts.dur||1,ease:opts.ease||'power2.out',onUpdate:()=>el.textContent=fmt(o.v)},opts.at);
+  return tl;
+}
+function svgEl(parent,tag,attrs){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);parent.appendChild(e);return e;}
+const FAM={tree:'var(--blue)',forest:'var(--green)',boosting:'var(--orange)'};
+
+/* ---------- slide 2: four stages ---------- */
+function drawTree(svg,cx,top,D,W,H,color,cls){
+  const pos=(d,i)=>[cx-W/2+W*(i+.5)/2**d, top+(D?d*H/D:0)];
+  for(let d=1;d<=D;d++)for(let i=0;i<2**d;i++){const [x,y]=pos(d,i),[px,py]=pos(d-1,i>>1);
+    svgEl(svg,'line',{x1:px,y1:py,x2:x,y2:y,stroke:color,'stroke-width':3,class:cls});}
+  const r=D>=4?9:14;
+  for(let d=0;d<=D;d++)for(let i=0;i<2**d;i++){const [x,y]=pos(d,i);
+    svgEl(svg,'circle',{cx:x,cy:y,r,fill:'var(--paper)',stroke:color,'stroke-width':3,class:cls});}
+}
+const STAGES=[['1 tree, depth 1',1,1],['1 tree, depth 2',2,2],['1 tree, depth 4',4,4],['100 trees',0,500]];
+(()=>{const svg=$('#s-grow .g-svg');let h='';
+  STAGES.forEach(([name,D,n],k)=>{const cx=230+k*380;
+    if(D)drawTree(svg,cx,230,D,D===1?140:D===2?220:320,240,'var(--blue)',`gs gs${k}`);
+    else for(let r=0;r<3;r++)for(let c=0;c<3;c++)drawTree(svg,cx-110+c*110,240+r*90,2,80,60,'var(--green)',`gs gs${k}`);
+    h+=`<div class="a gc gc${k}" style="left:${cx-170}px;top:510px;width:340px;text-align:center">
+      <div style="font-size:28px;font-weight:600">${name}</div>
+      <div class="mono" style="font-size:84px;font-weight:600;color:${n>7?'var(--orange)':'var(--blue)'};line-height:1.2">${n===500?'≈500':n}</div></div>`;});
+  $('#s-grow .g-cols').innerHTML=h;})();
+
+/* ---------- slide 3: trace a path ---------- */
+const TN=[['n0',660,260,'sex = male?'],['n1',400,410,'age < 9.5?'],['n2',920,410,'class = 3?'],
+ ['l1',220,560,'survives',1],['n3',580,560,'age < 40?'],['l2',810,560,'dies',1],['l3',1040,560,'survives',1],
+ ['l4',450,710,'dies',1],['l5',710,710,'survives',1]];
+const TE=[['n0','n1'],['n0','n2'],['n1','l1'],['n1','n3'],['n2','l2'],['n2','l3'],['n3','l4'],['n3','l5']];
+const PATH=[['n0','n1'],['n1','n3'],['n3','l4']];
+(()=>{const svg=$('#s-trace .tr-svg'),P=Object.fromEntries(TN.map(n=>[n[0],n]));
+  TE.forEach(([a,b])=>{const on=PATH.some(([p,q])=>p===a&&q===b);
+    svgEl(svg,'line',{x1:P[a][1],y1:P[a][2]+32,x2:P[b][1],y2:P[b][2]-32,stroke:'var(--line)','stroke-width':3});
+    if(on)svgEl(svg,'line',{x1:P[a][1],y1:P[a][2]+32,x2:P[b][1],y2:P[b][2]-32,stroke:'var(--blue)','stroke-width':7,class:`tp tp-${a}`});});
+  $('#s-trace .tr-nodes').innerHTML=TN.map(([id,x,y,l,leaf])=>`<div class="node ${leaf?'leaf':''}" data-id="${id}" style="left:${x}px;top:${y}px">${l}</div>`).join('');})();
+
+/* ---------- slide 5: leaves vs load ---------- */
+const LV=[[231,7.4,'var(--blue)'],[236,117,'var(--green)']];
+(()=>{let h='';LV.forEach(([lf,ld,c],i)=>{const y=250+i*140;
+  h+=`<div class="bar lv-b0" data-w="${lf*1.5}" style="left:480px;top:${y}px;width:0;background:var(--grey)"></div>`;
+  h+=`<div class="a lv-v0 mono" data-v="${lf}" style="left:${480+lf*1.5+14}px;top:${y}px;line-height:64px;font-size:32px;font-weight:600;color:var(--mute)">${lf}</div>`;
+  h+=`<div class="bar lv-b1" data-w="${Math.max(ld*3.3,12)}" style="left:1000px;top:${y}px;width:0;background:${c}"></div>`;
+  h+=`<div class="a lv-v1 mono" data-v="${ld}" style="left:${1000+Math.max(ld*3.3,12)+14}px;top:${y}px;line-height:64px;font-size:32px;font-weight:600;color:${c}">${ld<10?ld.toFixed(1):ld}</div>`;});
+  $('#s-leaves .lv-rows').innerHTML=h;})();
+
+/* ---------- slide 7: scatter ---------- */
+const LX=v=>Math.log10(Math.max(v,1))/3;
+const PANELS=[['Titanic',130,.70,.82],['Phoneme',930,.70,.92]];
+(()=>{const box=$('#s-scatter .sc-box');let h='';
+  PANELS.forEach(([title,x0,lo,hi])=>{const ds=title.toLowerCase(),W=570,H=440,y0=250,Y=v=>y0+H-(v-lo)/(hi-lo)*H;
+    const pts=DATA.points.filter(p=>p.dataset===ds), best=Math.max(...pts.map(p=>p.accuracy)),
+          bestIn=Math.max(...pts.filter(p=>p.simulation_load<=7).map(p=>p.accuracy)), gap=100*(best-bestIn);
+    h+=`<div class="a sc-ax" style="left:${x0}px;top:${y0}px;width:${W}px;height:${H}px;border-left:2px solid var(--mute);border-bottom:2px solid var(--mute)"></div>`;
+    h+=`<div class="a sc-ax" style="left:${x0+2}px;top:${y0}px;width:${LX(7)*W}px;height:${H-2}px;background:var(--blue-t)"></div>`;
+    h+=`<div class="a sc-ax" style="left:${x0}px;top:${y0-50}px;width:${W}px;text-align:center;font-size:32px;font-weight:600">${title}</div>`;
+    [1,7,100,1000].forEach(v=>h+=`<div class="a sc-ax mono cap" style="left:${x0+LX(v)*W-40}px;top:${y0+H+8}px;width:80px;text-align:center;font-size:22px">${v}</div>`);
+    [lo,hi].forEach(v=>h+=`<div class="a sc-ax mono cap" style="left:${x0-90}px;top:${Y(v)-14}px;width:80px;text-align:right;font-size:22px">${Math.round(v*100)}%</div>`);
+    h+=`<div class="a sc-ax cap" style="left:${x0}px;top:${y0+H+40}px;width:${W}px;text-align:center;font-size:24px">load (steps, log scale) →</div>`;
+    pts.forEach(p=>{const x=x0+LX(p.simulation_load)*W;
+      h+=`<div class="dot sc-d f-${p.family}" style="left:${x-9}px;top:${Y(p.accuracy)-9}px;width:18px;height:18px;background:${FAM[p.family]};opacity:.85"></div>`;});
+    [best,bestIn].forEach(v=>h+=`<div class="a sc-g" style="left:${x0}px;top:${Y(v)}px;width:${W+10}px;border-top:2px dashed var(--ink)"></div>`);
+    h+=`<div class="a sc-g mono" style="left:${x0+W+16}px;top:${(Y(best)+Y(bestIn))/2-20}px;font-size:30px;font-weight:700;color:${gap<2?'var(--blue)':'var(--orange)'}">−${gap.toFixed(1)}</div>`;
+  });
+  h+=`<div class="a sc-g cap" style="left:150px;top:800px;width:1360px;text-align:center;font-size:24px">dashed lines: best model overall vs. best interpretable model</div>`;
+  box.innerHTML=h;})();
+
+/* ---------- slide 8: price bars ---------- */
+(()=>{const rows=[...DATA.summary].sort((a,b)=>a.price_of_interpretability-b.price_of_interpretability);let h='';
+  rows.forEach((r,i)=>{const y=225+i*90, v=100*r.price_of_interpretability, w=Math.max(v*170,8), c=v<2?'var(--blue)':'var(--orange)';
+    h+=`<div class="a pr-l" style="left:100px;top:${y}px;width:300px;line-height:64px;font-size:34px;font-weight:600">${r.dataset.replace('_','-').replace('breast-cancer','breast cancer')}</div>`;
+    h+=`<div class="bar pr-b" data-w="${w}" style="left:420px;top:${y}px;width:0;background:${c}"></div>`;
+    h+=`<div class="a pr-v mono" data-v="${v.toFixed(1)}" data-w="${w}" style="left:440px;top:${y}px;line-height:64px;font-size:32px;font-weight:600;color:${c}">0.0</div>`;});
+  $('#s-price .pr-rows').innerHTML=h;})();
+
+/* ---------- slide 9: threshold grid ---------- */
+(()=>{const box=$('#s-thresh .th-box');let h='';const S=[1,2,3,5,10,30,100];
+  const L={};DATA.grid.forEach(g=>L[`${g.family}|${g.depth}|${g.n_trees}`]=g.simulation_load);
+  const blocks=[['1 tree',100,['1','2','3','4','5','6','8','10','max'],'tree',true],['forest',520,['1','2','3','5','max'],'forest',false],['boosting',1040,['1','2','3'],'boosting',false]];
+  blocks.forEach(([title,x0,depths,fam,single])=>{
+    h+=`<div class="a th-t" style="left:${x0}px;top:230px;font-size:34px;font-weight:600;color:${FAM[fam]}">${title}</div>`;
+    const dot=(x,y,v)=>`<div class="dot th-d" style="left:${x}px;top:${y}px;width:30px;height:30px;box-sizing:border-box;border:3px solid ${FAM[fam]};background:${v<=7?FAM[fam]:'transparent'}"></div>`;
+    if(single){h+=`<div class="a th-t cap mono" style="left:${x0}px;top:290px;font-size:22px">depth</div>`;
+      depths.forEach((d,i)=>{const y=330+i*46;h+=`<div class="a th-t mono cap" style="left:${x0}px;top:${y}px;width:100px;font-size:22px">${d}</div>`+dot(x0+60,y,L[`tree|${d}|1`]);});}
+    else{h+=`<div class="a th-t cap" style="left:${x0+100}px;top:290px;font-size:22px">trees →</div>`;
+      S.forEach((n,j)=>h+=`<div class="a th-t mono cap" style="left:${x0+100+j*56}px;top:330px;width:30px;text-align:center;font-size:22px">${n}</div>`);
+      h+=`<div class="a th-t cap mono" style="left:${x0}px;top:330px;font-size:22px">depth</div>`;
+      depths.forEach((d,i)=>{const y=376+i*56;h+=`<div class="a th-t mono cap" style="left:${x0}px;top:${y}px;font-size:22px">${d}</div>`;
+        S.forEach((n,j)=>h+=dot(x0+100+j*56,y,L[`${fam}|${d}|${n}`]));});}
+  });box.innerHTML=h;})();
+
+/* ---------- Task 2 slides ---------- */
+const SHORT={log_n_samples:'# samples',log_n_features:'# features',n_classes:'# classes',class_balance:'class balance',
+  share_categorical:'% categorical',pca_dims_95:'intrinsic dimension',best_feature_corr:'best single feature',
+  acc_majority:'majority-class accuracy',stump_gain:'gain of 1 split',linear_gain:'gain of linear model',knn_gain:'gain of 1-NN'};
+(()=>{const rows=Object.keys(SHORT).map(m=>[m,D2.rho[m],D2.p[m]]).sort((a,b)=>b[1]-a[1]);
+  const Z=980,K=520;let h=`<div class="a c2-ax" style="left:${Z}px;top:200px;width:2px;height:${rows.length*50}px;background:var(--mute)"></div>`;
+  [-0.5,0,0.5].forEach(v=>h+=`<div class="a c2-ax mono cap" style="left:${Z+v*K-40}px;top:${210+rows.length*50}px;width:80px;text-align:center;font-size:22px">${v>0?'+':''}${v}</div>`);
+  h+=`<div class="a c2-ax cap" style="left:${Z-K/2-100}px;top:${245+rows.length*50}px;width:${K+200}px;text-align:center;font-size:24px">← cheaper &nbsp;&nbsp; Spearman ρ &nbsp;&nbsp; more expensive →</div>`;
+  h+=`<div class="a c2-ax cap" style="left:1150px;top:700px;font-size:22px;white-space:nowrap"><span style="display:inline-block;width:22px;height:16px;background:var(--blue);margin-right:6px"></span>p &lt; 0.05 &nbsp; <span style="display:inline-block;width:22px;height:16px;background:var(--blue-t);margin-right:6px;margin-left:10px"></span>not significant</div>`;
+  rows.forEach(([m,r,pv],i)=>{const y=200+i*50,w=Math.abs(r)*K,c=r>0?'var(--orange)':'var(--blue)',sig=pv<0.05;
+    h+=`<div class="a c2-l" style="left:${Z-K-340}px;top:${y}px;width:320px;text-align:right;line-height:40px;font-size:27px;font-weight:${sig?700:400};color:${sig?'var(--ink)':'var(--mute)'}">${SHORT[m]}</div>`;
+    h+=`<div class="a c2-b" data-w="${w}" data-l="${r>0?Z:Z-w}" style="left:${Z}px;top:${y+4}px;width:0;height:32px;border-radius:4px;background:${c};opacity:${sig?1:.28}"></div>`;
+    h+=`<div class="a c2-v mono" style="left:${r>0?Z+w+10:Z-w-80}px;top:${y}px;width:70px;line-height:40px;font-size:22px;text-align:${r>0?'left':'right'};color:${sig?c:'var(--mute)'}">${r>0?'+':'−'}${Math.abs(r).toFixed(2)}</div>`;});
+  $('#s-t2corr .c2-box').innerHTML=h;})();
+(()=>{let h='';const P=[['n_classes','# classes',100,1,12,[2,4,7,11]],['acc_majority','majority-class accuracy',870,0,1,[0,0.5,1]]];
+  P.forEach(([m,lab,x0,lo,hi,ticks],pi)=>{const LAB=new Set(pi?['vowel','wilt','ozone']:['vowel','steel_plates','balance_scale','eucalyptus']);const W=600,H=430,y0=220,X=v=>x0+(v-lo)/(hi-lo)*W,Y=v=>y0+H-v/16*H;
+    h+=`<div class="a s2-ax" style="left:${x0}px;top:${y0}px;width:${W}px;height:${H}px;border-left:2px solid var(--mute);border-bottom:2px solid var(--mute)"></div>`;
+    ticks.forEach(v=>h+=`<div class="a s2-ax mono cap" style="left:${X(v)-40}px;top:${y0+H+8}px;width:80px;text-align:center;font-size:22px">${v}</div>`);
+    [0,5,10,15].forEach(v=>h+=`<div class="a s2-ax mono cap" style="left:${x0-70}px;top:${Y(v)-14}px;width:60px;text-align:right;font-size:22px">${v}</div>`);
+    h+=`<div class="a s2-ax" style="left:${x0}px;top:${y0+H+40}px;width:${W}px;text-align:center;font-size:28px;font-weight:600">${lab} →</div>`;
+    h+=`<div class="a s2-ax mono" style="left:${x0+W-260}px;top:${y0-50}px;width:260px;text-align:right;font-size:28px;font-weight:700;color:var(--orange)">ρ = ${D2.rho[m]>0?'+':'−'}${Math.abs(D2.rho[m]).toFixed(2)}</div>`;
+    D2.points.forEach(p=>{const x=X(p[m]),y=Y(100*p.price);
+      h+=`<div class="dot s2-d" style="left:${x-10}px;top:${y-10}px;width:20px;height:20px;background:var(--blue);opacity:.8"></div>`;
+      if(LAB.has(p.dataset))h+=`<div class="a s2-d cap" style="left:${x+14}px;top:${y-16}px;font-size:22px;white-space:nowrap">${p.dataset.replace(/_/g,' ')}</div>`;});});
+  h+=`<div class="a s2-ax cap" style="left:30px;top:160px;font-size:24px;white-space:nowrap">↑ accuracy lost at load ≤ 7 (pts)</div>`;
+  $('#s-t2scatter .s2-box').innerHTML=h;})();
+
+/* ---------- slides: init + steps ---------- */
+const SL=[
+{ id:'s-title',
+  init:e=>gsap.set($$('.t-in',e),{opacity:0,y:24}),
+  steps:[e=>TL().to($$('.t-in',e),{opacity:1,y:0,duration:.8,stagger:.14,ease:'power3.out'})],
+  notes:`Hi, we are team Hallucinators. Our task was to measure how interpretable a model is, and to find where it stops being interpretable.
+We'll show our metric, simulation load, and what it says about trees, forests and boosted trees on six datasets.` },
+
+{ id:'s-grow',
+  init:e=>{gsap.set($$('.gs',e),{opacity:0});gsap.set($$('.gc',e),{opacity:0,y:16});gsap.set($('.g-lab',e),{opacity:0});},
+  steps:[0,1,2,3].map(k=>e=>{const t=TL().to($$(`.gs${k}`,e),{opacity:1,duration:.4,stagger:.01}).to($(`.gc${k}`,e),{opacity:1,y:0,duration:.4},'-=.2');
+    if(k===0)t.to($('.g-lab',e),{opacity:1,duration:.4});return t;}),
+  notes:`A stump asks one question: one step to get a prediction.
+[click] Depth two: two questions per input.
+[click] Depth four: four questions per input, even though the tree has sixteen leaves.
+[click] A forest of a hundred trees: about four hundred questions plus a hundred votes to add up. Clearly not interpretable. So where in between do we lose track?` },
+
+{ id:'s-trace',
+  init:e=>{gsap.set($('.tr-p',e),{opacity:0,y:-10});gsap.set($$('.tp',e),{opacity:0});$$('.node',e).forEach(n=>gsap.set(n,{borderColor:'var(--line)',background:'var(--paper)',color:''}));
+    gsap.set($$('.tr-s1,.tr-s2,.tr-s3,.tr-sum',e),{opacity:0,x:-16});$('.tr-n',e).textContent='0';},
+  steps:[
+    e=>TL().to($('.tr-p',e),{opacity:1,y:0,duration:.5}),
+    e=>TL().to($('[data-id=n0]',e),{borderColor:'var(--blue)',background:'var(--blue-t)',duration:.3}).to($('.tr-s1',e),{opacity:1,x:0,duration:.4},'<'),
+    e=>TL().to($('.tp-n0',e),{opacity:1,duration:.3}).to($('[data-id=n1]',e),{borderColor:'var(--blue)',background:'var(--blue-t)',duration:.3}).to($('.tr-s2',e),{opacity:1,x:0,duration:.4},'<'),
+    e=>TL().to($('.tp-n1',e),{opacity:1,duration:.3}).to($('[data-id=n3]',e),{borderColor:'var(--orange)',background:'var(--orange-t)',duration:.3}).to($('.tr-s3',e),{opacity:1,x:0,duration:.4},'<'),
+    e=>{const t=TL().to($('.tp-n3',e),{opacity:1,duration:.3}).to($('[data-id=l4]',e),{borderColor:'var(--ink)',color:'var(--ink)',duration:.3}).to($('.tr-sum',e),{opacity:1,x:0,duration:.4});
+        counter(t,$('.tr-n',e),0,2.5,{dec:1,dur:.6,at:'<'});return t;}
+  ],
+  notes:`Our idea: count what a person actually has to do to get one prediction by hand. Take a Titanic passenger: male, 30, third class.
+[click] Is the passenger male? We look up a new feature and compare it: one step.
+[click] Is age below 9.5? Another new feature: one more step.
+[click] Is age below 40? We already know the age, so we only compare: half a step.
+[click] We reach the leaf. Two and a half steps for this passenger.` },
+
+{ id:'s-metric',
+  init:e=>{gsap.set($('.m-f',e),{opacity:0,y:16});gsap.set($$('.m-l',e),{opacity:0,y:10});gsap.set($('.m-avg',e),{opacity:0});gsap.set($('.m-t',e),{opacity:0,y:16});},
+  steps:[
+    e=>TL().to($('.m-f',e),{opacity:1,y:0,duration:.5}).to($$('.m-l',e),{opacity:1,y:0,duration:.4,stagger:.15}),
+    e=>TL().to($('.m-avg',e),{opacity:1,duration:.5}),
+    e=>TL().to($('.m-t',e),{opacity:1,y:0,duration:.5})
+  ],
+  notes:`As a formula: in every tree, new features cost one and repeated tests cost a half. With several trees, you need one extra step per tree to count the votes or add up the boosting scores.
+[click] We average this over all inputs in the data. So a deep branch that almost no input reaches barely counts.
+[click] For the threshold we use working memory: people can hold about seven plus or minus two items. A model is interpretable if its load is at most seven.` },
+
+{ id:'s-leaves',
+  init:e=>{gsap.set($$('.lv-l,.lv-h,.lv-f',e),{opacity:0});gsap.set($$('.lv-b0,.lv-b1',e),{width:0});gsap.set($$('.lv-v0,.lv-v1',e),{opacity:0});},
+  steps:[
+    e=>TL().to($$('.lv-l,.lv-f',e),{opacity:1,duration:.4}).to($$('.lv-h',e)[0],{opacity:1,duration:.3},0)
+      .to($$('.lv-b0',e),{width:i=>+$$('.lv-b0',e)[i].dataset.w,duration:1,stagger:.1},.2).to($$('.lv-v0',e),{opacity:1,duration:.3}),
+    e=>TL().to($$('.lv-h',e)[1],{opacity:1,duration:.3})
+      .to($$('.lv-b1',e),{width:i=>+$$('.lv-b1',e)[i].dataset.w,duration:1,stagger:.1}).to($$('.lv-v1',e),{opacity:1,duration:.3})
+  ],
+  notes:`Why not just count leaves? Two models on Titanic: one deep tree and a forest of 30 small trees. Both have about 235 leaves, so they look equally complex.
+[click] But to trace one passenger, the deep tree needs about 7 steps: you only walk one path. The forest needs 117: thirty paths plus thirty votes. Leaves count the whole model; load counts what one input goes through.` },
+
+{ id:'s-setup',
+  init:e=>gsap.set($$('.su',e),{opacity:0,y:20}),
+  steps:[e=>TL().to($$('.su',e),{opacity:1,y:0,duration:.5,stagger:.12})],
+  notes:`The experiment: six tabular classification datasets, from almost separable banknotes to the hard phoneme data. 65 models: single trees from depth 1 to unlimited, and random forests and gradient boosting with 1 to 100 trees. Three random 75/25 train-test splits, and we report the mean test accuracy.` },
+
+{ id:'s-scatter',
+  init:e=>{gsap.set($$('.sc-ax,.sc-leg',e),{opacity:0});gsap.set($$('.sc-d',e),{scale:0});gsap.set($$('.sc-g',e),{opacity:0});},
+  steps:[
+    e=>TL().to($$('.sc-ax,.sc-leg',e),{opacity:1,duration:.4}),
+    e=>TL().to($$('.sc-d.f-tree',e),{scale:1,duration:.35,stagger:.03,ease:'back.out(2)'}),
+    e=>TL().to($$('.sc-d.f-forest,.sc-d.f-boosting',e),{scale:1,duration:.3,stagger:{each:.008,from:'random'},ease:'back.out(2)'}),
+    e=>TL().to($$('.sc-g',e),{opacity:1,duration:.5,stagger:.1})
+  ],
+  notes:`Two of the six datasets. Each dot is one model; the x-axis is load on a log scale, the shaded area is load at most seven.
+[click] Single trees, in blue, all land inside or right at the edge.
+[click] Forests and boosting spread out to hundreds of steps.
+[click] The dashed lines compare the best model overall with the best interpretable one. On Titanic you lose under one point. On phoneme, four and a half points.` },
+
+{ id:'s-price',
+  init:e=>{gsap.set($$('.pr-l',e),{opacity:0});gsap.set($$('.pr-b',e),{width:0});$$('.pr-v',e).forEach(v=>{v.textContent='0.0';gsap.set(v,{x:0,opacity:0});});},
+  steps:[
+    e=>{const t=TL().to($$('.pr-l',e),{opacity:1,duration:.3,stagger:.05});
+        $$('.pr-b',e).forEach((b,i)=>{const w=+b.dataset.w,v=$$('.pr-v',e)[i];t.to(b,{width:w,duration:.9},.2+i*.1).to(v,{opacity:1,x:w,duration:.9},.2+i*.1);counter(t,v,0,+v.dataset.v,{dec:1,dur:.9,at:.2+i*.1});});
+        return t;}
+  ],
+  notes:`The same comparison for all six datasets: best accuracy overall minus best accuracy at load seven or less. On four datasets you lose less than two points. Only phoneme, which is strongly non-linear, and credit-g, with many features, cost four to six points.` },
+
+{ id:'s-thresh',
+  init:e=>{gsap.set($$('.th-t,.th-leg',e),{opacity:0});gsap.set($$('.th-d',e),{scale:0});},
+  steps:[e=>TL().to($$('.th-t,.th-leg',e),{opacity:1,duration:.4}).to($$('.th-d',e),{scale:1,duration:.3,stagger:.01,ease:'back.out(2)'})],
+  notes:`So where exactly is the threshold? Each dot is one model configuration, filled if its median load is seven or less.
+A single tree stays under seven at every depth, because each input only walks one path. Ensembles cross the line almost immediately: at most three stumps, or two trees of depth two or three.` },
+
+{ id:'s-t2corr',
+  init:e=>{gsap.set($$('.c2-l,.c2-v,.c2-ax',e),{opacity:0});$$('.c2-b',e).forEach(b=>gsap.set(b,{width:0,left:980}));},
+  steps:[e=>{const t=TL().to($$('.c2-ax,.c2-l',e),{opacity:1,duration:.4,stagger:.02});
+    $$('.c2-b',e).forEach((b,i)=>t.to(b,{width:+b.dataset.w,left:+b.dataset.l,duration:.7},.3+i*.05));return t.to($$('.c2-v',e),{opacity:1,duration:.3});}],
+  notes:`Task 2. We ran the same 65 models on 32 OpenML datasets and computed eleven meta-features per dataset: size, class balance, how many features are categorical, and "landmarkers", the accuracy of very cheap models like a majority guess, a single split, logistic regression and 1-nearest-neighbour.
+Each bar is the rank correlation between a meta-feature and the price of interpretability: how much accuracy you lose when you only allow load seven or less. Solid bars are significant.
+More classes make interpretability expensive. A high majority-class accuracy, meaning an imbalanced dataset, makes it cheap. And when a single split or 1-NN already gains a lot over guessing, there is more structure to learn, so complex models gain more. Size alone, samples or features, barely matters.` },
+
+{ id:'s-t2scatter',
+  init:e=>{gsap.set($$('.s2-ax',e),{opacity:0});gsap.set($$('.s2-d',e),{opacity:0,scale:0});},
+  steps:[e=>TL().to($$('.s2-ax',e),{opacity:1,duration:.4}).to($$('.s2-d',e),{opacity:1,scale:1,duration:.3,stagger:.01,ease:'back.out(2)'})],
+  notes:`The two strongest relations up close. Left: datasets with many classes, like vowel with eleven or steel plates with seven, lose 8 to 14 points if we stay interpretable. A tree with a few steps can only reach a few leaves, so it cannot separate many classes.
+Right: on imbalanced datasets like wilt or ozone, where guessing the majority already gives over 90 percent, a tiny tree is basically as good as anything. The flip side: the model is cheap, but also barely beats guessing.` },
+
+{ id:'s-t2tree',
+  init:e=>gsap.set($$('.mt',e),{opacity:0,y:10}),
+  steps:[e=>TL().to($('.mt0',e),{opacity:1,y:0,duration:.4}),e=>TL().to($$('.mt1',e),{opacity:1,y:0,duration:.4}),
+         e=>TL().to($$('.mt2',e),{opacity:1,y:0,duration:.4}),e=>TL().to($('.mt3',e),{opacity:1,y:0,duration:.4})],
+  notes:`Can we predict from the meta-features alone whether a dataset needs a complex model? We trained a depth-two decision tree on the 32 datasets, so the meta-model is interpretable itself.
+[click] It picks the best single-feature correlation. If even the best feature is barely related to the target, a simple tree is enough on all four such datasets. There is nothing more to gain.
+[click] With moderate correlations, all twelve datasets need a complex model. With strong single features it's mixed.
+[click] Leave-one-out, the rule is right 75 percent of the time, against 66 percent for always guessing the majority. With only 32 datasets, that's a hint rather than proof.` },
+
+{ id:'s-limits',
+  init:e=>gsap.set($$('.lim',e),{opacity:0,x:-24}),
+  steps:[e=>TL().to($$('.lim',e),{opacity:1,x:0,duration:.5,stagger:.25,ease:'power2.out'})],
+  notes:`Limits. We didn't run a study with people, so the weights one and a half and the threshold seven are assumptions. The metric is about tracing one prediction, not understanding the whole model: a tree with 110 leaves on phoneme still passes with load 6.7. And it doesn't consider whether the features make sense to a human.` },
+
+{ id:'s-ai',
+  init:e=>gsap.set($$('.ai',e),{opacity:0,y:16}),
+  steps:[e=>TL().to($$('.ai',e),{opacity:1,y:0,duration:.5,stagger:.2})],
+  notes:`As required: we used Claude Code for the code and the experiments. We read the code, re-ran everything and checked the numbers ourselves.` },
+
+{ id:'s-end',
+  init:e=>gsap.set($$('.e1,.e2',e),{opacity:0,y:20}),
+  steps:[e=>TL().to($('.e1',e),{opacity:1,y:0,duration:.7,ease:'power3.out'}),e=>TL().to($('.e2',e),{opacity:1,y:0,duration:.6})],
+  notes:`To sum up: a model is interpretable if a person can trace one prediction in about seven steps.
+[click] Single trees stay under that, ensembles cross it after two or three trees, and staying interpretable costs between 0.4 and 5.5 accuracy points on our datasets. Thanks, happy to take questions.` }
+];
+
+/* ---------- engine ---------- */
+$$('.slide').forEach(sl=>{const h=$('.h',sl);if(!h)return;const w=document.createElement('div');w.className='sbody';[...sl.children].forEach(c=>{if(c!==h)w.appendChild(c);});sl.appendChild(w);});
+SL.forEach(s=>s.el=document.getElementById(s.id));
+let cur=0, step=0, active=[];
+function render(i,k,animate){
+  active.forEach(t=>t.kill()); active=[];
+  SL.forEach(s=>s.el.classList.toggle('on',s===SL[i]));
+  const S=SL[i]; gsap.killTweensOf($$('*',S.el)); S.init(S.el);
+  for(let j=0;j<=k;j++){const t=S.steps[j](S.el); active.push(t); if(j<k||!animate||RM) t.progress(1,false);}
+  cur=i; step=k; ui();
+}
+function next(){const S=SL[cur]; if(step<S.steps.length-1){step++;const t=S.steps[step](S.el);active.push(t);if(RM)t.progress(1,false);ui();}
+  else if(cur<SL.length-1) render(cur+1,0,true);}
+function prev(){if(step>0) render(cur,step-1,false); else if(cur>0) render(cur-1,SL[cur-1].steps.length-1,false);}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+function ui(){
+  const total=SL.reduce((a,s)=>a+s.steps.length,0), done=SL.slice(0,cur).reduce((a,s)=>a+s.steps.length,0)+step+1;
+  $('#prog').style.width=(done/total*100)+'%';
+  $('#hint').style.opacity=cur===0?1:0;
+  const S=SL[cur];
+  $('#fpg').textContent=`${cur+1} / ${SL.length}`;$('#stage').classList.toggle('plain',cur<=0);
+  $('#notes .meta').textContent=`Slide ${cur+1} of ${SL.length} · step ${step+1} of ${S.steps.length}`;
+  $('#notes .body').innerHTML=S.notes.split('\n').map(p=>'<p>'+esc(p).replace(/\[click\]/g,'<span class="click">click</span>')+'</p>').join('');
+}
+function fit(){const s=Math.min(innerWidth/1600,innerHeight/900);$('#stage').style.transform=`translate(-50%,-50%) scale(${s})`;}
+addEventListener('resize',fit); fit();
+addEventListener('keydown',ev=>{
+  if(['ArrowRight','PageDown',' ','Enter'].includes(ev.key)){ev.preventDefault();next();}
+  else if(['ArrowLeft','PageUp','Backspace'].includes(ev.key)){ev.preventDefault();prev();}
+  else if(ev.key==='n'||ev.key==='N'){$('#notes').hidden=!$('#notes').hidden;}
+  else if(ev.key==='f'||ev.key==='F'){const d=document;(d.fullscreenElement?d.exitFullscreen():d.documentElement.requestFullscreen?.())?.catch?.(()=>{});}
+  else if(ev.key==='Home') render(0,0,true);
+});
+$('#stage').addEventListener('click',next);
+$('#bNext').addEventListener('click',e=>{e.stopPropagation();next();});
+$('#bPrev').addEventListener('click',e=>{e.stopPropagation();prev();});
+$('#bNotes').addEventListener('click',e=>{e.stopPropagation();$('#notes').hidden=!$('#notes').hidden;});
+// #p=N renders slide N fully built (used by scripts/build_slides.py for the PDF export)
+const m=location.hash.match(/^#p=(\d+)$/);
+if(m){document.body.classList.add('print');const i=+m[1];render(i,SL[i].steps.length-1,false);}
+else render(0,0,true);
+</script>
